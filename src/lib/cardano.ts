@@ -135,9 +135,12 @@ export async function sendCardano(
   const lovelace = new BigNumber(amountAda).times(1e6).integerValue();
   const output = { address: toAddr, amount: lovelace, tokens: [] };
 
-  // 4. build + balance the payment tx (typhonjs picks inputs, computes fee + change)
-  const tx = new typhon.Transaction({ protocolParams });
-  tx.paymentTransaction({ inputs, outputs: [output], changeAddress: fromAddr, ttl });
+  // 4. build + balance the payment tx (typhonjs picks inputs, computes fee + change).
+  //    The protocol params / inputs are built from Koios's runtime JSON and don't line
+  //    up 1:1 with typhonjs's strict types (e.g. a non-Plutus languageView), so we cast
+  //    at this boundary. Fine for a simple ADA payment — pending preprod verification.
+  const tx = new typhon.Transaction({ protocolParams: protocolParams as any });
+  tx.paymentTransaction({ inputs: inputs as any, outputs: [output] as any, changeAddress: fromAddr, ttl });
 
   // 5. sign the tx hash with the payment key
   const payKey  = new Bip32PrivateKey(Buffer.from(paymentXprvHex, "hex")).toPrivateKey();

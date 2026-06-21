@@ -179,7 +179,10 @@ export async function deriveSubstrateAccount(
   return {
     address,
     publicKey:  Buffer.from(pair.publicKey).toString("hex"),
-    privateKey: Buffer.from(pair.secretKey).toString("hex"),
+    // Store the 32-byte mini-secret (seed), NOT the 64-byte sr25519 secret key:
+    // send.ts re-creates the signing pair with keyring.addFromSeed(), which
+    // requires a 32-byte seed (passing the 64-byte secretKey throws).
+    privateKey: Buffer.from(miniSecret).toString("hex"),
   };
 }
 
