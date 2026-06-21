@@ -148,6 +148,25 @@ export async function fetchXmrBalance(
 
 // ─── Unified fetcher ──────────────────────────────────────────────────────────
 
+// Koios is a keyless REST API (no CSL/WASM) — inlined here so the heavy
+// cardano-serialization-lib (WASM, top-level await) stays out of this graph
+// and only loads inside the background service worker.
+export async function fetchCardanoBalance(address: string): Promise<BalanceResult> {
+  try {
+    const res = await fetch("https://api.koios.rest/api/v1/address_info", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ _addresses: [address] }),
+    });
+    if (!res.ok) throw new Error(`Koios ${res.status}`);
+    const data = await res.json();
+    const lovelace = (Array.isArray(data) && data[0]?.balance) ? String(data[0].balance) : "0";
+    return { formatted: `${(Number(lovelace) / 1e6).toFixed(6)} ADA`, raw: lovelace, symbol: "ADA" };
+  } catch (e) {
+    return { formatted: "0.000000 ADA", raw: "0", symbol: "ADA", error: (e as Error).message };
+  }
+}
+
 export interface AllBalances {
   evm:       BalanceResult;
   bitcoin:   BalanceResult;
@@ -155,16 +174,17 @@ export interface AllBalances {
   polkadot:  BalanceResult;
   liberland: BalanceResult;
   monero:    BalanceResult;
+  cardano:   BalanceResult;
 }
 
 export async function fetchAllBalances(
   accounts: {
     evm: string; bitcoin: string; solana: string;
-    polkadot: string; liberland: string; monero: string;
+    polkadot: string; liberland: string; monero: string; cardano: string;
   },
   xmrKeys?: { privateViewKey: string; publicSpendKey: string }
 ): Promise<AllBalances> {
-  const [evm, bitcoin, solana, polkadot, liberland, monero] = await Promise.allSettled([
+  const [evm, bitcoin, solana, polkadot, liberland, monero, cardano] = await Promise.allSettled([
     fetchEvmBalance(accounts.evm, "https://cloudflare-eth.com", "ETH"),
     fetchBtcBalance(accounts.bitcoin),
     fetchSolBalance(accounts.solana),
@@ -173,6 +193,7 @@ export async function fetchAllBalances(
     xmrKeys
       ? fetchXmrBalance(accounts.monero, xmrKeys.privateViewKey, xmrKeys.publicSpendKey)
       : Promise.resolve({ formatted: "Connect node", raw: "0", symbol: "XMR" }),
+    fetchCardanoBalance(accounts.cardano),
   ]);
 
   const unwrap = (r: PromiseSettledResult<BalanceResult>, sym: string): BalanceResult =>
@@ -185,5 +206,6 @@ export async function fetchAllBalances(
     polkadot:  unwrap(polkadot, "DOT"),
     liberland: unwrap(liberland, "LLD"),
     monero:    unwrap(monero, "XMR"),
+    cardano:   unwrap(cardano, "ADA"),
   };
 }

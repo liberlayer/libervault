@@ -74,10 +74,10 @@ class VaultEthereumProvider extends EventTarget {
   // EIP-6963: Multi-wallet discovery
   announceProvider() {
     const info = {
-      uuid:  "vault-wallet-v1",
-      name:  "Vault Wallet",
-      icon:  "data:image/svg+xml;base64,...", // Replace with your actual icon
-      rdns:  "com.vaultwallet",
+      uuid:  "b1e7c4a2-9f3d-4c6e-8a1b-2d5f7e9c0a3b",
+      name:  "LiberVault",
+      icon:  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+CiAgPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iMTEiIGZpbGw9IiMwZTBmMTMiLz4KICA8cGF0aCBkPSJNMjQgNy41bDEzIDUuMnY5LjNjMCA4LjQtNS4zIDE0LjItMTMgMTYuOC03LjctMi42LTEzLTguNC0xMy0xNi44di05LjN6IiBmaWxsPSIjZDIzYTYzIiBmaWxsLW9wYWNpdHk9IjAuMTUiIHN0cm9rZT0iI2UwNDc2ZSIgc3Ryb2tlLXdpZHRoPSIyLjQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KICA8Y2lyY2xlIGN4PSIyNCIgY3k9IjIxLjUiIHI9IjMuMiIgZmlsbD0iI2UwNDc2ZSIvPgogIDxyZWN0IHg9IjIyLjYiIHk9IjIzIiB3aWR0aD0iMi44IiBoZWlnaHQ9IjcuNSIgcng9IjEuNCIgZmlsbD0iI2UwNDc2ZSIvPgo8L3N2Zz4K",
+      rdns:  "com.libervault",
     };
     window.dispatchEvent(
       new CustomEvent("eip6963:announceProvider", {
@@ -149,4 +149,4 @@ window.addEventListener("eip6963:requestProvider", () => {
 // Announce immediately on load
 ethereumProvider.announceProvider();
 
-console.log("[Vault] Providers injected: window.ethereum, window.solana");
+console.log("[LiberVault] Providers injected: window.ethereum, window.solana");
