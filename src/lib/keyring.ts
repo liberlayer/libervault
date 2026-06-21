@@ -23,6 +23,7 @@ import { ripemd160 } from "@noble/hashes/ripemd160";
 import { hmac }      from "@noble/hashes/hmac";
 import { sha512 }    from "@noble/hashes/sha512";
 import type { AccountSet } from "./messages";
+import { deriveCardanoAccount } from "./cardano";
 
 // ─── BIP-44 Paths ──────────────────────────────────────────────────────────────
 const PATH_EVM = "m/44'/60'/0'/0/0";
@@ -200,6 +201,8 @@ export interface DerivedAccounts extends AccountSet {
   xmrViewPrivkey:   string;
   xmrSpendPubkey:   string;
   xmrViewPubkey:    string;
+  cardanoPaymentXprv: string;
+  cardanoStakeXprv:   string;
 }
 
 export async function deriveAllAccounts(mnemonic: string): Promise<DerivedAccounts> {
@@ -213,6 +216,17 @@ export async function deriveAllAccounts(mnemonic: string): Promise<DerivedAccoun
     deriveSubstrateAccount(mnemonic, SS58.liberland),
     deriveMoneroAccount(mnemonic),
   ]);
+
+  // Cardano (CIP-1852) — in a try/catch so an ADA failure never blocks the other chains.
+  let cardano = "", cardanoPaymentXprv = "", cardanoStakeXprv = "";
+  try {
+    const ada = await deriveCardanoAccount(mnemonic);
+    cardano = ada.address;
+    cardanoPaymentXprv = ada.paymentXprvHex;
+    cardanoStakeXprv = ada.stakeXprvHex;
+  } catch (e) {
+    console.error("Cardano derivation failed (non-fatal):", e);
+  }
 
   return {
     evm:              evm.address,
@@ -230,6 +244,9 @@ export async function deriveAllAccounts(mnemonic: string): Promise<DerivedAccoun
     xmrViewPrivkey:   xmr.privateViewKey,
     xmrSpendPubkey:   xmr.publicSpendKey,
     xmrViewPubkey:    xmr.publicViewKey,
+    cardano,
+    cardanoPaymentXprv,
+    cardanoStakeXprv,
   };
 }
 

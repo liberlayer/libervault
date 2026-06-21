@@ -21,12 +21,23 @@ script.onload = () => script.remove();
 
 // ─── Bridge: inpage → background ──────────────────────────────────────────────
 
+// SECURITY: a web page may ONLY trigger these dApp-facing request types. Privileged
+// wallet operations (create/import/unlock/lock, GET_ACCOUNTS, GET_BALANCES, send, fee)
+// must never be reachable from a page — otherwise any site could read accounts or drain
+// an unlocked wallet with no user approval.
+const DAPP_ALLOWED = new Set<string>([MSG.ETH_REQUEST, MSG.SOL_REQUEST, MSG.DOT_REQUEST, MSG.XMR_REQUEST]);
+
 window.addEventListener("message", async (event) => {
-  // Only handle messages from our inpage script
+  // Only handle request messages from our inpage script (ignore our own responses)
   if (event.source !== window) return;
-  if (!event.data || event.data.__vault !== true) return;
+  if (!event.data || event.data.__vault !== true || event.data.__response) return;
 
   const { type, payload, id } = event.data;
+
+  if (!DAPP_ALLOWED.has(type)) {
+    window.postMessage({ __vault: true, __response: true, id, error: "This method is not available to web pages." }, "*");
+    return;
+  }
 
   try {
     const response = await chrome.runtime.sendMessage({ type, payload });

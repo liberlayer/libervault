@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { MSG, AccountSet, WalletStatus } from "../lib/messages";
 import { AllBalances } from "../lib/balance";
 
-export type ChainTab = "evm" | "bitcoin" | "solana" | "polkadot" | "liberland" | "monero";
+export type ChainTab = "evm" | "bitcoin" | "solana" | "polkadot" | "liberland" | "monero" | "cardano";
 export type ModalView = null | "send" | "receive";
 type View = "loading" | "welcome" | "create" | "import" | "reveal-mnemonic" | "dashboard" | "lock";
 
@@ -43,7 +43,7 @@ async function sendMsg<T>(type: string, payload?: unknown): Promise<T> {
 
 export const useVault = create<VaultStore>((set, get) => ({
   view: "loading", status: { initialized: false, unlocked: false },
-  accounts: null, mnemonic: null, activeTab: "evm", modal: null,
+  accounts: null, mnemonic: null, activeTab: "cardano", modal: null,
   error: null, loading: false, balances: null, balanceLoading: false,
   lastTxHash: null, lastTxExplorer: null,
 

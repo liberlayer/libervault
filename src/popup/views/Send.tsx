@@ -3,7 +3,7 @@ import { useVault, ChainTab } from "../../store";
 import { C, F, S, CHAIN_META } from "../ui";
 
 const CHAIN_DECIMALS: Record<string, number> = {
-  evm: 18, bitcoin: 8, solana: 9, polkadot: 10, liberland: 12, monero: 12,
+  evm: 18, bitcoin: 8, solana: 9, polkadot: 10, liberland: 12, monero: 12, cardano: 6,
 };
 
 export default function Send() {

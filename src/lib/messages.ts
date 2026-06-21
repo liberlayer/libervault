@@ -38,10 +38,11 @@ export const CHAINS = {
   kusama:    { id: -3,    name: "Kusama",      symbol: "KSM",   rpc: "wss://kusama-rpc.polkadot.io",          family: "substrate", ss58Prefix: 2  },
   liberland: { id: -4,    name: "Liberland",   symbol: "LLD",   rpc: "wss://mainnet.liberland.org",           family: "substrate", ss58Prefix: 56 },
   monero:    { id: -5,    name: "Monero",      symbol: "XMR",   rpc: "https://xmr.node.community:18089",      family: "monero",    ss58Prefix: undefined },
+  cardano:   { id: -6,    name: "Cardano",     symbol: "ADA",   rpc: "https://api.koios.rest/api/v1",          family: "cardano",   ss58Prefix: undefined },
 } as const;
 
 export type ChainKey = keyof typeof CHAINS;
-export type ChainFamily = "evm" | "utxo" | "solana" | "substrate" | "monero";
+export type ChainFamily = "evm" | "utxo" | "solana" | "substrate" | "monero" | "cardano";
 
 // ─── Wallet Types ──────────────────────────────────────────────────────────────
 
@@ -57,6 +58,7 @@ export interface AccountSet {
   polkadot:  string; // SS58 prefix 0
   liberland: string; // SS58 prefix 56 (LLD + LLM share same address)
   monero:    string; // Monero base58 mainnet address (0x12 prefix)
+  cardano:   string; // CIP-1852 Shelley base address (addr1...)
 }
 
 /** Monero has two keypairs — callers needing the view key for scanning get this */

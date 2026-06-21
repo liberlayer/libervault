@@ -21,6 +21,7 @@ export const C = {
   dot:        "#E6007A",
   lib:        "#22C997",
   xmr:        "#FF6600",  // Monero orange
+  ada:        "#0033AD",  // Cardano blue
 } as const;
 
 export const F = "'JetBrains Mono', monospace";
@@ -119,6 +120,7 @@ export const S = {
 };
 
 export const CHAIN_META = [
+  { key: "cardano",   label: "Cardano",   sym: "ADA", color: C.ada, note: ""                    },
   { key: "evm",       label: "Ethereum",  sym: "ETH", color: C.eth, note: ""                    },
   { key: "bitcoin",   label: "Bitcoin",   sym: "BTC", color: C.btc, note: ""                    },
   { key: "solana",    label: "Solana",    sym: "SOL", color: C.sol, note: ""                    },
