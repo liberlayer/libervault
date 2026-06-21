@@ -9,6 +9,7 @@ import { vaultExists, saveVault, loadVault }    from "../lib/storage";
 import { generateMnemonic, validateMnemonic, deriveAllAccounts, DerivedAccounts, waitForCrypto } from "../lib/keyring";
 import { fetchAllBalances, AllBalances }         from "../lib/balance";
 import { sendEvm, sendBtc, sendSol, sendSubstrate, sendXmrTx, estimateEvmFee, estimateBtcFee, estimateSolFee, estimateSubstrateFee, estimateXmrFeeForSend } from "../lib/send";
+import { sendCardano } from "../lib/cardano";
 
 interface Session {
   accounts: DerivedAccounts | null;
@@ -20,8 +21,18 @@ let session: Session = { accounts: null, unlocked: false, balances: null };
 
 waitForCrypto().catch(console.error);
 
+// Auto-lock: wipe the decrypted in-memory session (keys) after this much inactivity.
+const AUTO_LOCK_MS = 15 * 60 * 1000; // 15 minutes
+let lastActivity = Date.now();
+function lockSession() {
+  import("../lib/xmr-wallet").then(m => m.clearXmrSession()).catch(() => {});
+  session = { accounts: null, unlocked: false, balances: null };
+}
+
 chrome.alarms.create("keepAlive", { periodInMinutes: 0.4 });
-chrome.alarms.onAlarm.addListener(() => {});
+chrome.alarms.onAlarm.addListener(() => {
+  if (session.unlocked && Date.now() - lastActivity > AUTO_LOCK_MS) lockSession();
+});
 
 chrome.runtime.onMessage.addListener((msg: VaultRequest, _sender, sendResponse) => {
   handleMessage(msg)
@@ -33,11 +44,12 @@ chrome.runtime.onMessage.addListener((msg: VaultRequest, _sender, sendResponse) 
 function toAccountSet(a: DerivedAccounts): AccountSet {
   return {
     evm: a.evm, bitcoin: a.bitcoin, solana: a.solana,
-    polkadot: a.polkadot, liberland: a.liberland, monero: a.monero,
+    polkadot: a.polkadot, liberland: a.liberland, monero: a.monero, cardano: a.cardano,
   };
 }
 
 async function handleMessage(msg: VaultRequest): Promise<VaultResponse> {
+  lastActivity = Date.now();   // any message counts as activity → defers auto-lock
   switch (msg.type) {
 
     case MSG.WALLET_STATUS: {
@@ -135,7 +147,7 @@ async function handleMessage(msg: VaultRequest): Promise<VaultResponse> {
 
 async function dispatchSend(
   accounts: DerivedAccounts,
-  req: { chain: string; to: string; amount: string; memo?: string; chainId?: number }
+  req: { chain: string; to: string; amount: string; memo?: string; chainId?: number; restoreHeight?: number }
 ) {
   const params = { to: req.to, amount: req.amount, memo: req.memo };
 
@@ -155,8 +167,16 @@ async function dispatchSend(
       return sendSubstrate(accounts.substratePrivkey, "https://rpc.polkadot.io", "DOT", 10, params);
     case "liberland":
       return sendSubstrate(accounts.substratePrivkey, "https://mainnet.liberland.org", "LLD", 12, params);
+    case "cardano":
+      return sendCardano(accounts.cardanoPaymentXprv, accounts.cardano, req.to, req.amount);
     case "monero":
-      throw new Error("Monero send requires ring signature WASM — coming in Phase 3. Use the Feather or Cake Wallet for XMR sends.");
+      return sendXmrTx(
+        accounts.monero,
+        accounts.xmrSpendPrivkey,
+        accounts.xmrViewPrivkey,
+        params,
+        req.restoreHeight ?? 0
+      );
     default:
       throw new Error(`Unknown chain: ${req.chain}`);
   }
@@ -189,6 +209,8 @@ async function dispatchFeeEstimate(
       const f = await estimateSubstrateFee("https://mainnet.liberland.org", accounts.liberland, req.to ?? accounts.liberland, req.amount ?? "0", 12);
       return { display: `~${f.fee} LLD` };
     }
+    case "cardano":
+      return { display: "~0.17 ADA (network fee)" };
     case "monero":
       return { display: "~0.000016 XMR (typical)" };
     default:
@@ -234,9 +256,11 @@ async function handleXmrRequest(method: string, params: unknown[]): Promise<unkn
   switch (method) {
     case "xmr_getAddress":     return { address: session.accounts.monero };
     case "xmr_getPublicKeys":  return {
+      // NOTE: private view key is intentionally NOT exposed to dApps — handing it out
+      // lets the recipient see all incoming XMR (breaks Monero privacy). View-key
+      // scanning happens only inside the wallet.
       publicSpendKey:  session.accounts.xmrSpendPubkey,
       publicViewKey:   session.accounts.xmrViewPubkey,
-      privateViewKey:  session.accounts.xmrViewPrivkey,
     };
     case "xmr_signMessage": {
       const { keccak_256 } = await import("@noble/hashes/sha3");
@@ -247,8 +271,16 @@ async function handleXmrRequest(method: string, params: unknown[]): Promise<unkn
       const sig            = ed25519.sign(msgHash, spendKeyBE);
       return { signature: "0x" + Buffer.from(sig).toString("hex"), publicSpendKey: session.accounts.xmrSpendPubkey };
     }
-    case "xmr_sendTransaction":
-      throw new Error("Monero send requires ring signature WASM — Phase 3");
+    case "xmr_sendTransaction": {
+      const { sendXmrTx } = await import("../lib/send");
+      const [to, amount] = params as [string, string];
+      return sendXmrTx(
+        session.accounts.monero,
+        session.accounts.xmrSpendPrivkey,
+        session.accounts.xmrViewPrivkey,
+        { to, amount }
+      );
+    }
     default:
       throw new Error(`Unsupported XMR method: ${method}`);
   }

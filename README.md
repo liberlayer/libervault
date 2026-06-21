@@ -6,10 +6,10 @@
 
 **Non-Custodial. Private. Multi-Chain.**
 
-A browser extension wallet for ETH, BTC, SOL, DOT, Liberland (LLD/LLM), and Monero (XMR).
+A browser extension wallet for ADA, ETH, BTC, SOL, DOT, Liberland (LLD/LLM), and Monero (XMR).
 
 [![License](https://img.shields.io/badge/license-GPL--v3-blue)](LICENSE)
-[![Build](https://img.shields.io/badge/build-passing-brightgreen)](#getting-started)
+[![Chains](https://img.shields.io/badge/chains-7-d23a63)](#supported-chains)
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-informational)](#architecture)
 [![Website](https://img.shields.io/badge/website-libervault.com-blue)](https://libervault.com)
 
@@ -44,6 +44,7 @@ LiberVault includes native support for the Liberland Blockchain (LLD + LLM) and 
 
 | Chain | Symbol | Family | Derivation | Send | Receive | Balance |
 |---|---|---|---|---|---|---|
+| Cardano | ADA | Cardano | m/1852'/1815'/0'/{0,2}/0 · Ed25519-BIP32 (CIP-1852) | ✅† | ✅ | ✅ |
 | Ethereum + EVM | ETH | EVM | m/44'/60'/0'/0/0 · secp256k1 | ✅ | ✅ | ✅ |
 | Polygon, BSC, Arbitrum, Base | MATIC/BNB/ETH | EVM | Same key, different RPC | ✅ | ✅ | ✅ |
 | Bitcoin | BTC | UTXO | m/84'/0'/0'/0/0 · native SegWit | ✅ | ✅ | ✅ |
@@ -53,7 +54,8 @@ LiberVault includes native support for the Liberland Blockchain (LLD + LLM) and 
 | Monero | XMR | Monero | m/44'/128'/0'/0/0 · ed25519 | ✅ | ✅ | ✅ |
 
 > Liberland: LLD (Liberland Dollar) and LLM (Liberland Merit) share the same address — same keypair, separate asset IDs on-chain.  
-> Monero: Full RingCT transaction construction via monero-javascript WASM. Spend key never leaves the extension. View key is used for output scanning against a configurable remote node.
+> Monero: Full RingCT transaction construction via monero-javascript WASM. Spend key never leaves the extension. View key is used for output scanning against a configurable remote node.  
+> Cardano: Pure-TypeScript derivation + Shelley address + transaction building via `@stricahq` (no WASM). Balance via Koios. †Send is implemented and compiles, pending preprod-testnet verification before mainnet reliance.
 
 ---
 

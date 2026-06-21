@@ -1,5 +1,5 @@
 {
-  "name": "vault-extension",
+  "name": "libervault",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,6 +9,9 @@
     "preview": "vite build && echo 'Load dist/ as unpacked extension in chrome://extensions'"
   },
   "dependencies": {
+    "@stricahq/bip32ed25519": "^1.1.0",
+    "@stricahq/typhonjs": "^2.0.0",
+    "bignumber.js": "^9.1.2",
     "@noble/ciphers": "^1.0.0",
     "@noble/curves": "^1.4.0",
     "@noble/hashes": "^1.4.0",
