@@ -27,7 +27,7 @@ async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey>
     ["deriveKey"]
   );
   return crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt, iterations: PBKDF2_ITERS, hash: "SHA-256" },
+    { name: "PBKDF2", salt: salt as BufferSource, iterations: PBKDF2_ITERS, hash: "SHA-256" },
     baseKey,
     { name: "AES-GCM", length: 256 },
     false,
@@ -73,7 +73,7 @@ export async function saveVault(data: VaultBlob, password: string): Promise<void
   const key  = await deriveKey(password, salt);
 
   const plaintext  = new TextEncoder().encode(JSON.stringify(data));
-  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plaintext);
+  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv as BufferSource }, key, plaintext as BufferSource);
 
   // Pack: salt(32) + iv(12) + ciphertext
   const packed = new Uint8Array(32 + 12 + ciphertext.byteLength);
@@ -102,7 +102,7 @@ export async function loadVault(password: string): Promise<VaultBlob> {
 
   let plain: ArrayBuffer;
   try {
-    plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, cipher);
+    plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv as BufferSource }, key, cipher as BufferSource);
   } catch {
     throw new Error("Incorrect password");
   }
