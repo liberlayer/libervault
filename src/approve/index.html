@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LiberVault — Approve Request</title>
+  <style>
+    :root { --bg:#060A0F; --surface:#0B1018; --border:#0F1E2E; --text:#C5DCF0; --dim:#4A7A9B; --blue:#00C8FF; --green:#00E5A0; --red:#FF3A5C; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'JetBrains Mono', ui-monospace, monospace; background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; padding:18px; }
+    .brand { font-size:13px; letter-spacing:.18em; color:var(--dim); text-transform:uppercase; margin-bottom:14px; }
+    .brand b { color:var(--blue); }
+    h1 { font-size:18px; margin-bottom:10px; }
+    .lead { font-size:13px; line-height:1.6; color:var(--text); }
+    .origin { color:var(--blue); word-break:break-all; }
+    .chain { color:var(--green); }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-top:14px; }
+    label { font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--dim); display:block; margin-bottom:6px; }
+    pre { font-size:12px; white-space:pre-wrap; word-break:break-word; max-height:180px; overflow:auto; color:var(--text); }
+    .spacer { flex:1; }
+    .warn { font-size:11px; color:var(--dim); margin-top:14px; line-height:1.5; }
+    .btns { display:flex; gap:10px; margin-top:16px; }
+    button { flex:1; font-family:inherit; font-size:13px; font-weight:700; padding:12px; border-radius:9px; cursor:pointer; border:1px solid var(--border); }
+    #reject { background:transparent; color:var(--text); }
+    #reject:hover { border-color:var(--red); color:var(--red); }
+    #approve { background:var(--blue); color:#000; border:none; }
+    #approve:disabled { opacity:.4; cursor:not-allowed; }
+  </style>
+</head>
+<body>
+  <div class="brand">🛡️ <b>LiberVault</b></div>
+  <h1 id="title">Request</h1>
+  <p class="lead">
+    <span class="origin" id="origin">…</span><br />
+    wants to <span id="verb">…</span><span id="chainwrap"> on <span class="chain" id="chain"></span></span>.
+  </p>
+  <div class="card" id="msgwrap" style="display:none">
+    <label>Message to sign</label>
+    <pre id="msg"></pre>
+  </div>
+  <div id="body" class="lead" style="margin-top:12px"></div>
+  <div class="spacer"></div>
+  <p class="warn">Only approve requests from sites you trust. LiberVault never shares your private keys — approving connect lets a site see your address; approving sign produces a signature with your key.</p>
+  <div class="btns">
+    <button id="reject">Reject</button>
+    <button id="approve">Approve</button>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

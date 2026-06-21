@@ -34,12 +34,37 @@ chrome.alarms.onAlarm.addListener(() => {
   if (session.unlocked && Date.now() - lastActivity > AUTO_LOCK_MS) lockSession();
 });
 
-chrome.runtime.onMessage.addListener((msg: VaultRequest, _sender, sendResponse) => {
-  handleMessage(msg)
+chrome.runtime.onMessage.addListener((msg: VaultRequest, sender, sendResponse) => {
+  handleMessage(msg, sender)
     .then(sendResponse)
     .catch(err => sendResponse({ type: msg.type, error: (err as Error).message } as VaultResponse));
   return true;
 });
+
+// ─── dApp approval flow ───────────────────────────────────────────────────────
+// Sensitive dApp requests (connect / sign) must be explicitly approved by the user
+// in a popup window. Origins that approve a connection are remembered for the session.
+type ApprovalDetail = { origin: string; kind: "connect" | "sign"; chain?: string; message?: string };
+const pendingApprovals = new Map<string, { resolve: (ok: boolean) => void; detail: ApprovalDetail }>();
+const connectedOrigins = new Set<string>();
+let approvalSeq = 0;
+
+function requestApproval(detail: ApprovalDetail): Promise<boolean> {
+  return new Promise((resolve) => {
+    const id = `apv_${++approvalSeq}_${Date.now()}`;
+    pendingApprovals.set(id, { resolve, detail });
+    chrome.windows.create({
+      url: chrome.runtime.getURL(`src/approve/index.html?id=${id}`),
+      type: "popup", width: 380, height: 600, focused: true,
+    }).catch(() => { pendingApprovals.delete(id); resolve(false); });
+    // Safety: if the window is closed without a choice, auto-reject after 2 minutes.
+    setTimeout(() => { const p = pendingApprovals.get(id); if (p) { pendingApprovals.delete(id); p.resolve(false); } }, 120_000);
+  });
+}
+function originOf(sender?: chrome.runtime.MessageSender): string {
+  try { return (sender && (sender.origin || (sender.url ? new URL(sender.url).origin : ""))) || "unknown site"; }
+  catch { return "unknown site"; }
+}
 
 function toAccountSet(a: DerivedAccounts): AccountSet {
   return {
@@ -48,9 +73,28 @@ function toAccountSet(a: DerivedAccounts): AccountSet {
   };
 }
 
-async function handleMessage(msg: VaultRequest): Promise<VaultResponse> {
+async function handleMessage(msg: VaultRequest, sender?: chrome.runtime.MessageSender): Promise<VaultResponse> {
   lastActivity = Date.now();   // any message counts as activity → defers auto-lock
   switch (msg.type) {
+
+    // ── Approval popup ↔ background ──────────────────────────────────────────────
+    case MSG.GET_PENDING_APPROVAL: {
+      const id = (msg.payload as { id?: string })?.id || "";
+      const p = pendingApprovals.get(id);
+      return { type: msg.type, payload: p ? p.detail : null };
+    }
+    case MSG.TX_APPROVE: {
+      const id = (msg.payload as { id?: string })?.id || "";
+      const p = pendingApprovals.get(id);
+      if (p) { pendingApprovals.delete(id); p.resolve(true); }
+      return { type: msg.type };
+    }
+    case MSG.TX_REJECT: {
+      const id = (msg.payload as { id?: string })?.id || "";
+      const p = pendingApprovals.get(id);
+      if (p) { pendingApprovals.delete(id); p.resolve(false); }
+      return { type: msg.type };
+    }
 
     case MSG.WALLET_STATUS: {
       const initialized = await vaultExists();
@@ -109,7 +153,7 @@ async function handleMessage(msg: VaultRequest): Promise<VaultResponse> {
 
     case MSG.ETH_REQUEST: {
       const { method, params } = msg.payload as { method: string; params: unknown[] };
-      return { type: msg.type, payload: await handleEthRequest(method, params) };
+      return { type: msg.type, payload: await handleEthRequest(method, params, originOf(sender)) };
     }
 
     case MSG.DOT_REQUEST: {
@@ -119,7 +163,7 @@ async function handleMessage(msg: VaultRequest): Promise<VaultResponse> {
 
     case MSG.XMR_REQUEST: {
       const { method, params } = msg.payload as { method: string; params: unknown[] };
-      return { type: msg.type, payload: await handleXmrRequest(method, params) };
+      return { type: msg.type, payload: await handleXmrRequest(method, params, originOf(sender)) };
     }
 
     // ── Send Transaction ────────────────────────────────────────────────────────
@@ -220,16 +264,29 @@ async function dispatchFeeEstimate(
 
 // ─── EVM dApp handler ─────────────────────────────────────────────────────────
 
-async function handleEthRequest(method: string, params: unknown[]): Promise<unknown> {
+async function handleEthRequest(method: string, params: unknown[], origin: string): Promise<unknown> {
   if (!session.unlocked || !session.accounts) throw new Error("Wallet is locked");
   const { ethers } = await import("ethers");
   const wallet = new ethers.Wallet(session.accounts.evmPrivkey);
   switch (method) {
-    case "eth_accounts":
-    case "eth_requestAccounts":   return [session.accounts.evm];
     case "eth_chainId":           return "0x1";
+    case "eth_accounts":
+      // Only expose the address to sites the user has explicitly connected.
+      return connectedOrigins.has(origin) ? [session.accounts.evm] : [];
+    case "eth_requestAccounts": {
+      if (!connectedOrigins.has(origin)) {
+        const ok = await requestApproval({ origin, kind: "connect", chain: "Ethereum" });
+        if (!ok) throw new Error("User rejected the connection request");
+        connectedOrigins.add(origin);
+      }
+      return [session.accounts.evm];
+    }
     case "personal_sign": {
       const [message] = params as [string];
+      let human = message;
+      try { human = message.startsWith("0x") ? new TextDecoder().decode(ethers.getBytes(message)) : message; } catch { /* keep raw */ }
+      const ok = await requestApproval({ origin, kind: "sign", chain: "Ethereum", message: human });
+      if (!ok) throw new Error("User rejected the signature request");
       return wallet.signMessage(message.startsWith("0x") ? ethers.getBytes(message) : message);
     }
     case "eth_sendTransaction":   throw new Error("eth_sendTransaction: use LiberVault send UI");
@@ -251,7 +308,7 @@ async function handleDotRequest(method: string, _params: unknown[]): Promise<unk
 
 // ─── Monero handler ───────────────────────────────────────────────────────────
 
-async function handleXmrRequest(method: string, params: unknown[]): Promise<unknown> {
+async function handleXmrRequest(method: string, params: unknown[], origin: string): Promise<unknown> {
   if (!session.unlocked || !session.accounts) throw new Error("Wallet is locked");
   switch (method) {
     case "xmr_getAddress":     return { address: session.accounts.monero };
@@ -263,6 +320,8 @@ async function handleXmrRequest(method: string, params: unknown[]): Promise<unkn
       publicViewKey:   session.accounts.xmrViewPubkey,
     };
     case "xmr_signMessage": {
+      const okSig = await requestApproval({ origin, kind: "sign", chain: "Monero", message: String((params as [string])[0] ?? "") });
+      if (!okSig) throw new Error("User rejected the signature request");
       const { keccak_256 } = await import("@noble/hashes/sha3");
       const { ed25519 }    = await import("@noble/curves/ed25519");
       const [message]      = params as [string];
@@ -272,8 +331,10 @@ async function handleXmrRequest(method: string, params: unknown[]): Promise<unkn
       return { signature: "0x" + Buffer.from(sig).toString("hex"), publicSpendKey: session.accounts.xmrSpendPubkey };
     }
     case "xmr_sendTransaction": {
-      const { sendXmrTx } = await import("../lib/send");
       const [to, amount] = params as [string, string];
+      const okSend = await requestApproval({ origin, kind: "sign", chain: "Monero", message: `Send ${amount} XMR to ${to}` });
+      if (!okSend) throw new Error("User rejected the transaction");
+      const { sendXmrTx } = await import("../lib/send");
       return sendXmrTx(
         session.accounts.monero,
         session.accounts.xmrSpendPrivkey,
