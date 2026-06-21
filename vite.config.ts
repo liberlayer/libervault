@@ -11,7 +11,7 @@ export default defineConfig({
     react(),
     webExtension({
       manifest: "src/manifest.json",
-      additionalInputs: ["src/inpage/index.ts"],
+      additionalInputs: ["src/inpage/index.ts", "src/approve/index.html"],
     }),
   ],
   build: {
