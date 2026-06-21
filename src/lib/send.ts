@@ -147,13 +147,18 @@ export async function sendBtc(
   const change  = inputTotal - targetSats - fee;
   if (change < 0n) throw new Error(`Insufficient funds: have ${inputTotal} sats, need ${targetSats + fee}`);
 
-  // Decode recipient address → scriptPubKey
+  // Decode recipient address → scriptPubKey.
+  // Only native SegWit v0 (bc1q…, 20-byte P2WPKH) is supported. We explicitly
+  // reject anything else — critically, Taproot (bc1p…, 32-byte) must NOT be
+  // encoded as a 20-byte P2WPKH script, which would send funds to a wrong/
+  // unspendable output.
   let recipientScript: Uint8Array;
-  if (params.to.startsWith("bc1")) {
+  if (params.to.startsWith("bc1q")) {
     const recipHash = decodeBech32Address(params.to);
+    if (recipHash.length !== 20) throw new Error("Unsupported Bitcoin address (expected a native SegWit v0 'bc1q…' address)");
     recipientScript = concat(new Uint8Array([0x00, 0x14]), recipHash);
   } else {
-    throw new Error("Only native SegWit (bc1...) recipient addresses supported currently");
+    throw new Error("Only native SegWit v0 (bc1q…) recipient addresses are supported right now (no legacy/P2SH/Taproot yet)");
   }
 
   // Fetch raw txs for inputs
