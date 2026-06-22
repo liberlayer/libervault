@@ -259,13 +259,14 @@ export async function estimateBtcFee(
 
 export async function sendSol(
   privateKeyHex: string,
-  params:        SendParams
+  params:        SendParams,
+  rpcUrl:        string = "https://api.mainnet-beta.solana.com"
 ): Promise<SendResult> {
   const {
     Connection, Keypair, PublicKey,
     SystemProgram, Transaction, LAMPORTS_PER_SOL, sendAndConfirmTransaction,
   } = await import("@solana/web3.js");
-  const conn    = new Connection("https://api.mainnet-beta.solana.com", "confirmed");
+  const conn    = new Connection(rpcUrl, "confirmed");
   const privBuf = Buffer.from(privateKeyHex, "hex").slice(0, 32);
   const keypair = Keypair.fromSeed(privBuf);
   const lamports = Math.round(parseFloat(params.amount) * LAMPORTS_PER_SOL);
@@ -273,7 +274,8 @@ export async function sendSol(
     SystemProgram.transfer({ fromPubkey: keypair.publicKey, toPubkey: new PublicKey(params.to), lamports })
   );
   const sig = await sendAndConfirmTransaction(conn, tx, [keypair]);
-  return { txHash: sig, explorer: `https://solscan.io/tx/${sig}` };
+  const cluster = /devnet/.test(rpcUrl) ? "?cluster=devnet" : /testnet/.test(rpcUrl) ? "?cluster=testnet" : "";
+  return { txHash: sig, explorer: `https://solscan.io/tx/${sig}${cluster}` };
 }
 
 export async function estimateSolFee(): Promise<{ fee: string }> {
