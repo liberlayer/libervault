@@ -297,12 +297,13 @@ export async function sendSubstrate(
   decimals:      number,
   params:        SendParams
 ): Promise<SendResult> {
-  const { ApiPromise, HttpProvider } = await import("@polkadot/api");
+  const { ApiPromise, WsProvider }   = await import("@polkadot/api");
   const { Keyring }                  = await import("@polkadot/keyring");
   const { cryptoWaitReady }          = await import("@polkadot/util-crypto");
   await cryptoWaitReady();
-  const httpUrl  = rpcUrl.replace("wss://", "https://").replace("ws://", "http://");
-  const api      = await ApiPromise.create({ provider: new HttpProvider(httpUrl), noInitWarn: true });
+  // WsProvider, not HttpProvider: nearly all Substrate RPCs are WSS-only, and the
+  // signAndSend status subscription (isInBlock/isFinalized) requires a WS connection.
+  const api      = await ApiPromise.create({ provider: new WsProvider(rpcUrl), noInitWarn: true });
   const keyring  = new Keyring({ type: "sr25519" });
   const account  = keyring.addFromSeed(Buffer.from(privateKeyHex, "hex"));
   const rawAmt   = BigInt(Math.round(parseFloat(params.amount) * 10 ** decimals));
@@ -333,9 +334,8 @@ export async function estimateSubstrateFee(
   rpcUrl: string, from: string, to: string, amount: string, decimals: number
 ): Promise<{ fee: string; symbol: string }> {
   try {
-    const { ApiPromise, HttpProvider } = await import("@polkadot/api");
-    const httpUrl  = rpcUrl.replace("wss://", "https://").replace("ws://", "http://");
-    const api      = await ApiPromise.create({ provider: new HttpProvider(httpUrl), noInitWarn: true });
+    const { ApiPromise, WsProvider } = await import("@polkadot/api");
+    const api      = await ApiPromise.create({ provider: new WsProvider(rpcUrl), noInitWarn: true });
     const rawAmt   = BigInt(Math.round(parseFloat(amount || "0") * 10 ** decimals));
     const info: any = await api.tx.balances.transferAllowDeath(to || from, rawAmt).paymentInfo(from);
     const fee = (Number(BigInt(info.partialFee.toString())) / 10 ** decimals).toFixed(6);
