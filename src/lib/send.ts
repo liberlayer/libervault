@@ -72,8 +72,14 @@ function encodeWitness(sigDer: Uint8Array, hashType: number, pubkey: Uint8Array)
 export async function sendBtc(
   privateKeyHex: string,
   fromAddress:   string,
-  params:        SendParams
+  params:        SendParams,
+  network:       "mainnet" | "signet" | "testnet" = "mainnet"
 ): Promise<SendResult> {
+  // Network-aware endpoints + recipient prefix (signet & testnet share the "tb" HRP).
+  const apiBase      = network === "mainnet" ? "https://blockstream.info/api" : `https://blockstream.info/${network}/api`;
+  const explorerBase = network === "mainnet" ? "https://blockstream.info/tx/" : `https://blockstream.info/${network}/tx/`;
+  const recipHrp     = network === "mainnet" ? "bc1q" : "tb1q";
+
   const { secp256k1 }  = await import("@noble/curves/secp256k1");
   const { sha256 }     = await import("@noble/hashes/sha256");
   const { ripemd160 }  = await import("@noble/hashes/ripemd160");
@@ -112,8 +118,8 @@ export async function sendBtc(
 
   // Fetch UTXOs + fee rate
   const [utxoRes, feeRes] = await Promise.all([
-    fetch(`https://blockstream.info/api/address/${fromAddress}/utxo`),
-    fetch("https://blockstream.info/api/fee-estimates"),
+    fetch(`${apiBase}/address/${fromAddress}/utxo`),
+    fetch(`${apiBase}/fee-estimates`),
   ]);
   if (!utxoRes.ok) throw new Error("Failed to fetch UTXOs");
   const utxos: Utxo[] = await utxoRes.json();
@@ -153,17 +159,17 @@ export async function sendBtc(
   // encoded as a 20-byte P2WPKH script, which would send funds to a wrong/
   // unspendable output.
   let recipientScript: Uint8Array;
-  if (params.to.startsWith("bc1q")) {
+  if (params.to.startsWith(recipHrp)) {
     const recipHash = decodeBech32Address(params.to);
-    if (recipHash.length !== 20) throw new Error("Unsupported Bitcoin address (expected a native SegWit v0 'bc1q…' address)");
+    if (recipHash.length !== 20) throw new Error(`Unsupported Bitcoin address (expected a native SegWit v0 '${recipHrp}…' address)`);
     recipientScript = concat(new Uint8Array([0x00, 0x14]), recipHash);
   } else {
-    throw new Error("Only native SegWit v0 (bc1q…) recipient addresses are supported right now (no legacy/P2SH/Taproot yet)");
+    throw new Error(`Only native SegWit v0 (${recipHrp}…) recipient addresses are supported right now (no legacy/P2SH/Taproot yet)`);
   }
 
   // Fetch raw txs for inputs
   const rawTxs = await Promise.all(
-    selected.map(u => fetch(`https://blockstream.info/api/tx/${u.txid}/hex`).then(r => r.text()))
+    selected.map(u => fetch(`${apiBase}/tx/${u.txid}/hex`).then(r => r.text()))
   );
 
   // BIP-143 sighash preimage for each input
@@ -226,13 +232,13 @@ export async function sendBtc(
     new Uint8Array([0x00, 0x00, 0x00, 0x00]),               // locktime
   );
 
-  const broadcastRes = await fetch("https://blockstream.info/api/tx", {
+  const broadcastRes = await fetch(`${apiBase}/tx`, {
     method: "POST", body: toHex(rawTx),
   });
   if (!broadcastRes.ok) throw new Error(`Broadcast failed: ${await broadcastRes.text()}`);
   const txid = await broadcastRes.text();
 
-  return { txHash: txid, explorer: `https://blockstream.info/tx/${txid}` };
+  return { txHash: txid, explorer: `${explorerBase}${txid}` };
 }
 
 export async function estimateBtcFee(
@@ -346,10 +352,12 @@ export async function sendXmrTx(
   privateSpendKey: string,
   privateViewKey:  string,
   params:          SendParams,
-  restoreHeight:   number = 0
+  restoreHeight:   number = 0,
+  network:         "mainnet" | "stagenet" | "testnet" = "mainnet",
+  daemonUri?:      string
 ): Promise<SendResult> {
   const { getXmrWallet, sendXmr } = await import("./xmr-wallet");
-  const session = await getXmrWallet(address, privateSpendKey, privateViewKey, restoreHeight);
+  const session = await getXmrWallet(address, privateSpendKey, privateViewKey, restoreHeight, network, daemonUri);
   const result  = await sendXmr(session, params.to, params.amount);
   return { txHash: result.txHash, explorer: result.explorer };
 }

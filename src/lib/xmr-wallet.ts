@@ -17,12 +17,17 @@ export interface XmrWalletSession {
   wallet:      any;   // MoneroWalletFull instance
   synced:      boolean;
   syncHeight:  number;
+  network:     "mainnet" | "stagenet" | "testnet";
 }
 
 let xmrSession: XmrWalletSession | null = null;
 
-// The public node we use by default. Can be overridden in settings (Phase 3).
-const DEFAULT_DAEMON = "https://xmr.node.community:18089";
+// Default daemons per network (overridable via the daemonUri arg).
+const DEFAULT_DAEMONS: Record<string, string> = {
+  mainnet:  "https://xmr.node.community:18089",
+  stagenet: "http://node.monerodevs.org:38089",
+  testnet:  "http://node.monerodevs.org:28089",
+};
 
 /**
  * Initialise (or return cached) Monero wallet from spend + view keys.
@@ -33,9 +38,11 @@ export async function getXmrWallet(
   address:        string,
   privateSpendKey: string,   // hex LE
   privateViewKey:  string,   // hex LE
-  restoreHeight:   number = 0
+  restoreHeight:   number = 0,
+  network:        "mainnet" | "stagenet" | "testnet" = "mainnet",
+  daemonUri?:     string
 ): Promise<XmrWalletSession> {
-  if (xmrSession?.wallet) return xmrSession;
+  if (xmrSession?.wallet && xmrSession.network === network) return xmrSession;
 
   // Dynamic import keeps this out of the initial bundle
   const xmr = await import("monero-javascript");
@@ -47,19 +54,24 @@ export async function getXmrWallet(
 
   xmr.LibraryUtils.setWorkerDistPath(extBase);
 
+  const netType = network === "stagenet" ? xmr.MoneroNetworkType.STAGENET
+    : network === "testnet" ? xmr.MoneroNetworkType.TESTNET
+    : xmr.MoneroNetworkType.MAINNET;
+  const server  = daemonUri || DEFAULT_DAEMONS[network];
+
   // Create an in-memory wallet (no file I/O) from existing keys
   const wallet = await xmr.createWalletFull(
     new xmr.MoneroWalletConfig()
       .setPrimaryAddress(address)
       .setPrivateSpendKey(privateSpendKey)   // monero-javascript expects LE hex
       .setPrivateViewKey(privateViewKey)
-      .setNetworkType(xmr.MoneroNetworkType.MAINNET)
-      .setServerUri(DEFAULT_DAEMON)
+      .setNetworkType(netType)
+      .setServerUri(server)
       .setRestoreHeight(restoreHeight)
       .setProxyToWorker(false)               // required: no dedicated worker in MV3
   );
 
-  xmrSession = { wallet, synced: false, syncHeight: restoreHeight };
+  xmrSession = { wallet, synced: false, syncHeight: restoreHeight, network };
   return xmrSession;
 }
 
@@ -131,7 +143,7 @@ export async function sendXmr(
   return {
     txHash,
     fee:      `${feeXmr} XMR`,
-    explorer: `https://xmrchain.net/tx/${txHash}`,
+    explorer: `https://${session.network === "mainnet" ? "" : session.network + "."}xmrchain.net/tx/${txHash}`,
   };
 }
 
