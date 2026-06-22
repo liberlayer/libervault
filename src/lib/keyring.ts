@@ -313,11 +313,18 @@ function scReduce32(scalar: Uint8Array): Uint8Array {
   return Buffer.from(hex, "hex").reverse(); // back to LE
 }
 
-/** ed25519 scalar → compressed public key (32 bytes) */
+/** ed25519 scalar → compressed public key (32 bytes): Monero pubkey = scalar·G */
 function xmrPublicKey(privateScalarLE: Uint8Array): Uint8Array {
-  // noble/curves expects scalars big-endian
-  const scalBE = Buffer.from(privateScalarLE).reverse();
-  return ed25519.getPublicKey(scalBE);
+  // Monero public keys are a DIRECT scalar multiplication of the ed25519 base
+  // point. ed25519.getPublicKey() is WRONG here — it SHA-512-hashes and clamps
+  // its input as a signing seed (RFC 8032), yielding an unrelated point, so
+  // every derived address embedded wrong keys (funds unspendable / sends fail
+  // with "spend key does not match address").
+  const s = BigInt("0x" + Buffer.from(privateScalarLE).reverse().toString("hex"));
+  // @noble/curves exposes the Edwards point class as `Point` (newer 1.x) or
+  // `ExtendedPoint` (older); support both across the ^1.x range.
+  const Pt = (ed25519 as any).Point ?? (ed25519 as any).ExtendedPoint;
+  return Pt.BASE.multiply(s).toRawBytes();
 }
 
 export interface MoneroKeys {
