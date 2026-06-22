@@ -15,9 +15,8 @@
  * Address:    Shelley base address (addr1...) = payment keyhash + stake keyhash
  * Balance:    Koios (free, keyless REST)
  * Send:       typhonjs paymentTransaction + Koios /address_utxos + /submittx
- *             ⚠️ Implemented but NOT yet preprod-verified (moves real funds —
- *             same caveat as every other chain's send path). Test on preprod
- *             (NETWORK_ID = 0) with throwaway ADA before relying on mainnet.
+ *             ✅ Verified on preprod (2026-06-22): a 10 tADA send confirmed on-chain
+ *             (tx 878838de…57ae0cf). Set NETWORK_ID = 0 to target preprod.
  */
 
 import * as bip39 from "@scure/bip39";
@@ -80,7 +79,7 @@ export async function getCardanoBalance(address: string): Promise<{ lovelace: st
 export interface CardanoSendResult { txHash: string; explorer: string; }
 
 /**
- * Send ADA via typhonjs.  ⚠️ NOT preprod-verified yet — test before mainnet use.
+ * Send ADA via typhonjs.  ✅ Verified on preprod (2026-06-22).
  * Pulls UTXOs + protocol params + tip from Koios, builds/balances a payment tx,
  * signs with the payment key, submits the CBOR to Koios /submittx.
  */
@@ -138,9 +137,11 @@ export async function sendCardano(
   // 4. build + balance the payment tx (typhonjs picks inputs, computes fee + change).
   //    The protocol params / inputs are built from Koios's runtime JSON and don't line
   //    up 1:1 with typhonjs's strict types (e.g. a non-Plutus languageView), so we cast
-  //    at this boundary. Fine for a simple ADA payment — pending preprod verification.
-  const tx = new typhon.Transaction({ protocolParams: protocolParams as any });
-  tx.paymentTransaction({ inputs: inputs as any, outputs: [output] as any, changeAddress: fromAddr, ttl });
+  //    at this boundary. Fine for a simple ADA payment.
+  //    IMPORTANT: paymentTransaction() RETURNS the configured Transaction — it does not
+  //    mutate the builder. We must sign/build the returned tx, not the empty builder.
+  const txBuilder = new typhon.Transaction({ protocolParams: protocolParams as any });
+  const tx = txBuilder.paymentTransaction({ inputs: inputs as any, outputs: [output] as any, changeAddress: fromAddr, ttl });
 
   // 5. sign the tx hash with the payment key
   const payKey  = new Bip32PrivateKey(Buffer.from(paymentXprvHex, "hex")).toPrivateKey();
