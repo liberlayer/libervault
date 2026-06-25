@@ -4,12 +4,12 @@
 
 **Hold your keys. Control your assets.**
 
-**Non-Custodial. Private. Multi-Chain.**
+**Non-Custodial. Private. Chain-Agnostic.**
 
-A browser extension wallet for ADA, ETH, BTC, SOL, DOT, Liberland (LLD/LLM), and Monero (XMR).
+A browser extension wallet leading with Cardano (ADA) — plus Ethereum/EVM, Bitcoin, Solana, Polkadot, and Monero, with Liberland support.
 
 [![License](https://img.shields.io/badge/license-GPL--v3-blue)](LICENSE)
-[![Chains](https://img.shields.io/badge/chains-7-d23a63)](#supported-chains)
+[![Chains](https://img.shields.io/badge/chains-7%20networks-d23a63)](#supported-chains)
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-informational)](#architecture)
 [![Website](https://img.shields.io/badge/website-libervault.com-blue)](https://libervault.com)
 
@@ -21,13 +21,13 @@ A browser extension wallet for ADA, ETH, BTC, SOL, DOT, Liberland (LLD/LLM), and
 
 LiberVault is a non-custodial browser extension wallet built on Chrome Manifest V3.
 
-You generate one BIP-39 seed phrase. That seed deterministically derives addresses across all supported chains.
+It leads with Cardano (ADA) and is chain-agnostic by design: one BIP-39 seed phrase deterministically derives addresses across every supported network.
 
 Your keys are encrypted locally using AES-256-GCM and never leave your device.
 
 There are no servers. No accounts. No tracking.
 
-LiberVault includes native support for the Liberland Blockchain (LLD + LLM) and full Monero send/receive using ring-signature WASM.
+Alongside Cardano, LiberVault supports Ethereum/EVM, Bitcoin, Solana, Polkadot, and Monero (full send/receive via ring-signature WASM), plus native support for the Liberland Blockchain (LLD + LLM).
 
 ---
 
