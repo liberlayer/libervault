@@ -25,7 +25,7 @@ script.onload = () => script.remove();
 // wallet operations (create/import/unlock/lock, GET_ACCOUNTS, GET_BALANCES, send, fee)
 // must never be reachable from a page — otherwise any site could read accounts or drain
 // an unlocked wallet with no user approval.
-const DAPP_ALLOWED = new Set<string>([MSG.ETH_REQUEST, MSG.SOL_REQUEST, MSG.DOT_REQUEST, MSG.XMR_REQUEST]);
+const DAPP_ALLOWED = new Set<string>([MSG.ETH_REQUEST, MSG.SOL_REQUEST, MSG.DOT_REQUEST, MSG.XMR_REQUEST, MSG.TRX_REQUEST]);
 
 window.addEventListener("message", async (event) => {
   // Only handle request messages from our inpage script (ignore our own responses)

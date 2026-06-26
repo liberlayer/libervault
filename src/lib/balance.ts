@@ -146,6 +146,22 @@ export async function fetchXmrBalance(
   }
 }
 
+// ─── Tron ─────────────────────────────────────────────────────────────────────
+// Pure REST via TronGrid (wallet/getaccount) — no tronweb in the bundle.
+
+export async function fetchTronBalance(
+  address: string,
+  host: string = "https://api.trongrid.io"
+): Promise<BalanceResult> {
+  try {
+    const { getTronBalance } = await import("./tron");
+    const b = await getTronBalance(address, host);
+    return { formatted: `${parseFloat(b.formatted).toFixed(6)} TRX`, raw: b.sun, symbol: "TRX" };
+  } catch (e) {
+    return { formatted: "0.000000 TRX", raw: "0", symbol: "TRX", error: (e as Error).message };
+  }
+}
+
 // ─── Unified fetcher ──────────────────────────────────────────────────────────
 
 // Koios is a keyless REST API (no CSL/WASM) — inlined here so the heavy
@@ -175,16 +191,17 @@ export interface AllBalances {
   liberland: BalanceResult;
   monero:    BalanceResult;
   cardano:   BalanceResult;
+  tron:      BalanceResult;
 }
 
 export async function fetchAllBalances(
   accounts: {
     evm: string; bitcoin: string; solana: string;
-    polkadot: string; liberland: string; monero: string; cardano: string;
+    polkadot: string; liberland: string; monero: string; cardano: string; tron: string;
   },
   xmrKeys?: { privateViewKey: string; publicSpendKey: string }
 ): Promise<AllBalances> {
-  const [evm, bitcoin, solana, polkadot, liberland, monero, cardano] = await Promise.allSettled([
+  const [evm, bitcoin, solana, polkadot, liberland, monero, cardano, tron] = await Promise.allSettled([
     fetchEvmBalance(accounts.evm, "https://cloudflare-eth.com", "ETH"),
     fetchBtcBalance(accounts.bitcoin),
     fetchSolBalance(accounts.solana),
@@ -194,6 +211,7 @@ export async function fetchAllBalances(
       ? fetchXmrBalance(accounts.monero, xmrKeys.privateViewKey, xmrKeys.publicSpendKey)
       : Promise.resolve({ formatted: "Connect node", raw: "0", symbol: "XMR" }),
     fetchCardanoBalance(accounts.cardano),
+    fetchTronBalance(accounts.tron),
   ]);
 
   const unwrap = (r: PromiseSettledResult<BalanceResult>, sym: string): BalanceResult =>
@@ -207,5 +225,6 @@ export async function fetchAllBalances(
     liberland: unwrap(liberland, "LLD"),
     monero:    unwrap(monero, "XMR"),
     cardano:   unwrap(cardano, "ADA"),
+    tron:      unwrap(tron, "TRX"),
   };
 }

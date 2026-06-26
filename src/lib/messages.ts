@@ -16,6 +16,8 @@ export const MSG = {
   DOT_RESPONSE:    "VAULT_DOT_RESPONSE",
   XMR_REQUEST:     "VAULT_XMR_REQUEST",
   XMR_RESPONSE:    "VAULT_XMR_RESPONSE",
+  TRX_REQUEST:     "VAULT_TRX_REQUEST",
+  TRX_RESPONSE:    "VAULT_TRX_RESPONSE",
   TX_APPROVE:      "VAULT_TX_APPROVE",
   TX_REJECT:       "VAULT_TX_REJECT",
   GET_PENDING_APPROVAL: "VAULT_GET_PENDING_APPROVAL",
@@ -40,10 +42,11 @@ export const CHAINS = {
   liberland: { id: -4,    name: "Liberland",   symbol: "LLD",   rpc: "wss://mainnet.liberland.org",           family: "substrate", ss58Prefix: 56 },
   monero:    { id: -5,    name: "Monero",      symbol: "XMR",   rpc: "https://xmr.node.community:18089",      family: "monero",    ss58Prefix: undefined },
   cardano:   { id: -6,    name: "Cardano",     symbol: "ADA",   rpc: "https://api.koios.rest/api/v1",          family: "cardano",   ss58Prefix: undefined },
+  tron:      { id: -7,    name: "Tron",        symbol: "TRX",   rpc: "https://api.trongrid.io",                family: "tron",      ss58Prefix: undefined },
 } as const;
 
 export type ChainKey = keyof typeof CHAINS;
-export type ChainFamily = "evm" | "utxo" | "solana" | "substrate" | "monero" | "cardano";
+export type ChainFamily = "evm" | "utxo" | "solana" | "substrate" | "monero" | "cardano" | "tron";
 
 // ─── Wallet Types ──────────────────────────────────────────────────────────────
 
@@ -60,6 +63,7 @@ export interface AccountSet {
   liberland: string; // SS58 prefix 56 (LLD + LLM share same address)
   monero:    string; // Monero base58 mainnet address (0x12 prefix)
   cardano:   string; // CIP-1852 Shelley base address (addr1...)
+  tron:      string; // Tron base58check address (T..., 0x41 prefix)
 }
 
 /** Monero has two keypairs — callers needing the view key for scanning get this */

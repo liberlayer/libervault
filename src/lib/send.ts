@@ -376,3 +376,22 @@ export async function estimateXmrFeeForSend(
     return estimateXmrFee(session, to, amount);
   } catch { return "~0.000016 XMR (typical)"; }
 }
+
+// ─── Tron ───────────────────────────────────────────────────────────────────────
+// Pure secp256k1 (reuses the EVM curve) + TronGrid REST — no tronweb in the bundle.
+
+export async function sendTronTx(
+  privateKeyHex: string,
+  fromAddress:   string,
+  params:        SendParams,
+  host:          string = "https://api.trongrid.io"
+): Promise<SendResult> {
+  const { sendTron } = await import("./tron");
+  return sendTron(privateKeyHex, fromAddress, params.to, params.amount, host);
+}
+
+export async function estimateTronFee(): Promise<{ fee: string }> {
+  // A plain TRX transfer consumes bandwidth; with a free daily bandwidth
+  // allowance it is typically free, otherwise ~0.267 TRX is burned.
+  return { fee: "~0.267 TRX (or free w/ bandwidth)" };
+}

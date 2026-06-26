@@ -25,7 +25,7 @@ export default function Dashboard() {
 
   const addrMap: Record<string, string> = {
     evm: accounts.evm, bitcoin: accounts.bitcoin, solana: accounts.solana,
-    polkadot: accounts.polkadot, liberland: accounts.liberland, monero: accounts.monero, cardano: accounts.cardano,
+    polkadot: accounts.polkadot, liberland: accounts.liberland, monero: accounts.monero, cardano: accounts.cardano, tron: accounts.tron,
   };
 
   async function copy(key: string) {
