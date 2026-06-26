@@ -8,7 +8,7 @@ import { MSG, VaultRequest, VaultResponse, WalletStatus, AccountSet } from "../l
 import { vaultExists, saveVault, loadVault }    from "../lib/storage";
 import { generateMnemonic, validateMnemonic, deriveAllAccounts, DerivedAccounts, waitForCrypto } from "../lib/keyring";
 import { fetchAllBalances, AllBalances }         from "../lib/balance";
-import { sendEvm, sendBtc, sendSol, sendSubstrate, sendXmrTx, estimateEvmFee, estimateBtcFee, estimateSolFee, estimateSubstrateFee, estimateXmrFeeForSend } from "../lib/send";
+import { sendEvm, sendBtc, sendSol, sendSubstrate, sendXmrTx, sendTronTx, estimateEvmFee, estimateBtcFee, estimateSolFee, estimateSubstrateFee, estimateXmrFeeForSend, estimateTronFee } from "../lib/send";
 import { sendCardano } from "../lib/cardano";
 
 interface Session {
@@ -69,7 +69,7 @@ function originOf(sender?: chrome.runtime.MessageSender): string {
 function toAccountSet(a: DerivedAccounts): AccountSet {
   return {
     evm: a.evm, bitcoin: a.bitcoin, solana: a.solana,
-    polkadot: a.polkadot, liberland: a.liberland, monero: a.monero, cardano: a.cardano,
+    polkadot: a.polkadot, liberland: a.liberland, monero: a.monero, cardano: a.cardano, tron: a.tron,
   };
 }
 
@@ -166,6 +166,11 @@ async function handleMessage(msg: VaultRequest, sender?: chrome.runtime.MessageS
       return { type: msg.type, payload: await handleXmrRequest(method, params, originOf(sender)) };
     }
 
+    case MSG.TRX_REQUEST: {
+      const { method, params } = msg.payload as { method: string; params: unknown[] };
+      return { type: msg.type, payload: await handleTrxRequest(method, params, originOf(sender)) };
+    }
+
     // ── Send Transaction ────────────────────────────────────────────────────────
     case "VAULT_SEND_TX" as any: {
       if (!session.unlocked || !session.accounts) throw new Error("Wallet locked");
@@ -221,6 +226,8 @@ async function dispatchSend(
         params,
         req.restoreHeight ?? 0
       );
+    case "tron":
+      return sendTronTx(accounts.tronPrivkey, accounts.tron, params);
     default:
       throw new Error(`Unknown chain: ${req.chain}`);
   }
@@ -257,6 +264,10 @@ async function dispatchFeeEstimate(
       return { display: "~0.17 ADA (network fee)" };
     case "monero":
       return { display: "~0.000016 XMR (typical)" };
+    case "tron": {
+      const f = await estimateTronFee();
+      return { display: f.fee };
+    }
     default:
       return { display: "Unknown" };
   }
@@ -344,5 +355,24 @@ async function handleXmrRequest(method: string, params: unknown[], origin: strin
     }
     default:
       throw new Error(`Unsupported XMR method: ${method}`);
+  }
+}
+
+// ─── Tron handler ─────────────────────────────────────────────────────────────
+
+async function handleTrxRequest(method: string, params: unknown[], origin: string): Promise<unknown> {
+  if (!session.unlocked || !session.accounts) throw new Error("Wallet is locked");
+  switch (method) {
+    case "trx_getAddress":  return { address: session.accounts.tron };
+    case "trx_accounts":    return [session.accounts.tron];
+    case "trx_sendTransaction": {
+      const [to, amount] = params as [string, string];
+      const ok = await requestApproval({ origin, kind: "sign", chain: "Tron", message: `Send ${amount} TRX to ${to}` });
+      if (!ok) throw new Error("User rejected the transaction");
+      const { sendTronTx } = await import("../lib/send");
+      return sendTronTx(session.accounts.tronPrivkey, session.accounts.tron, { to, amount });
+    }
+    default:
+      throw new Error(`Unsupported TRX method: ${method}`);
   }
 }

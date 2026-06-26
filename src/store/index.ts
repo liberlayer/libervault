@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { MSG, AccountSet, WalletStatus } from "../lib/messages";
 import { AllBalances } from "../lib/balance";
 
-export type ChainTab = "evm" | "bitcoin" | "solana" | "polkadot" | "liberland" | "monero" | "cardano";
+export type ChainTab = "evm" | "bitcoin" | "solana" | "polkadot" | "liberland" | "monero" | "cardano" | "tron";
 export type ModalView = null | "send" | "receive";
 type View = "loading" | "welcome" | "create" | "import" | "reveal-mnemonic" | "dashboard" | "lock";
 

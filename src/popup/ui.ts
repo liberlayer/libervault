@@ -22,6 +22,7 @@ export const C = {
   lib:        "#22C997",
   xmr:        "#FF6600",  // Monero orange
   ada:        "#0033AD",  // Cardano blue
+  trx:        "#FF060A",  // Tron red
 } as const;
 
 export const F = "'JetBrains Mono', monospace";
@@ -127,4 +128,5 @@ export const CHAIN_META = [
   { key: "polkadot",  label: "Polkadot",  sym: "DOT", color: C.dot, note: ""                    },
   { key: "liberland", label: "Liberland", sym: "LLD", color: C.lib, note: " · LLD + LLM"        },
   { key: "monero",    label: "Monero",    sym: "XMR", color: C.xmr, note: " · spend + view keys" },
+  { key: "tron",      label: "Tron",      sym: "TRX", color: C.trx, note: ""                    },
 ] as const;

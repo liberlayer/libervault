@@ -24,6 +24,7 @@ import { hmac }      from "@noble/hashes/hmac";
 import { sha512 }    from "@noble/hashes/sha512";
 import type { AccountSet } from "./messages";
 import { deriveCardanoAccount } from "./cardano";
+import { deriveTronAccount } from "./tron";
 
 // ─── BIP-44 Paths ──────────────────────────────────────────────────────────────
 const PATH_EVM = "m/44'/60'/0'/0/0";
@@ -206,6 +207,7 @@ export interface DerivedAccounts extends AccountSet {
   xmrViewPubkey:    string;
   cardanoPaymentXprv: string;
   cardanoStakeXprv:   string;
+  tronPrivkey:        string;
 }
 
 export async function deriveAllAccounts(mnemonic: string): Promise<DerivedAccounts> {
@@ -231,6 +233,8 @@ export async function deriveAllAccounts(mnemonic: string): Promise<DerivedAccoun
     console.error("Cardano derivation failed (non-fatal):", e);
   }
 
+  const tron = deriveTronAccount(mnemonic);
+
   return {
     evm:              evm.address,
     bitcoin:          btc.address,
@@ -238,6 +242,7 @@ export async function deriveAllAccounts(mnemonic: string): Promise<DerivedAccoun
     polkadot:         dot.address,
     liberland:        lib.address,
     monero:           xmr.address,
+    tron:             tron.address,
     evmPrivkey:       evm.privateKey,
     btcPrivkey:       btc.privateKey,
     solPrivkey:       sol.privateKey,
@@ -250,6 +255,7 @@ export async function deriveAllAccounts(mnemonic: string): Promise<DerivedAccoun
     cardano,
     cardanoPaymentXprv,
     cardanoStakeXprv,
+    tronPrivkey:      tron.privateKey,
   };
 }
 
