@@ -1,7 +1,7 @@
 /**
  * Monero Wallet — LiberVault
  * --------------------------
- * Uses monero-javascript (WASM) to create an in-memory wallet from
+ * Uses monero-ts (WASM) to create an in-memory wallet from
  * existing spend/view keys and connect to a remote daemon for:
  *   - Output scanning (balance)
  *   - Ring signature construction (send)
@@ -45,7 +45,7 @@ export async function getXmrWallet(
   if (xmrSession?.wallet && xmrSession.network === network) return xmrSession;
 
   // Dynamic import keeps this out of the initial bundle
-  const xmr = await import("monero-javascript");
+  const xmr = await import("monero-ts");
 
   // Tell the library where to find WASM + worker in extension context
   const extBase = typeof chrome !== "undefined" && chrome.runtime
@@ -63,10 +63,10 @@ export async function getXmrWallet(
   const wallet = await xmr.createWalletFull(
     new xmr.MoneroWalletConfig()
       .setPrimaryAddress(address)
-      .setPrivateSpendKey(privateSpendKey)   // monero-javascript expects LE hex
+      .setPrivateSpendKey(privateSpendKey)   // monero-ts expects LE hex
       .setPrivateViewKey(privateViewKey)
       .setNetworkType(netType)
-      .setServerUri(server)
+      .setServer(server)
       .setRestoreHeight(restoreHeight)
       .setProxyToWorker(false)               // required: no dedicated worker in MV3
   );
@@ -115,7 +115,7 @@ export async function sendXmr(
   amount:   string,           // human-readable XMR, e.g. "0.5"
   priority: number = 1        // 1=normal, 2=elevated, 3=priority, 4=unimportant
 ): Promise<{ txHash: string; fee: string; explorer: string }> {
-  const xmr = await import("monero-javascript");
+  const xmr = await import("monero-ts");
 
   if (!session.synced) {
     // Partial sync — get latest outputs before sending
@@ -156,7 +156,7 @@ export async function estimateXmrFee(
   amount:  string
 ): Promise<string> {
   try {
-    const xmr = await import("monero-javascript");
+    const xmr = await import("monero-ts");
     const piconero = BigInt(Math.round(parseFloat(amount || "0.001") * 1e12));
     const txConfig = new xmr.MoneroTxConfig()
       .setAddress(to || session.wallet.getPrimaryAddress())

@@ -31,7 +31,7 @@ jobs:
         run: npm run build
 
   audit:
-    name: Security Audit (informational)
+    name: Security Audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,8 +45,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Informational until the monero-javascript -> monero-ts migration lands
-      # (see tracking issue). Flip continue-on-error to false to make this a hard gate.
-      - name: Audit production dependencies (high or critical)
-        continue-on-error: true
-        run: npm audit --omit=dev --audit-level=high
+      # Hard gate: block on CRITICAL advisories (currently zero after the
+      # monero-ts migration). One known HIGH (serialize-javascript, a transitive
+      # of monero-ts) has no upstream fix and is tracked in issue #27; tighten to
+      # --audit-level=high once that is resolved upstream.
+      - name: Audit production dependencies (block on critical)
+        run: npm audit --omit=dev --audit-level=critical
